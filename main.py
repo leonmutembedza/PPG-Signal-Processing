@@ -7,15 +7,16 @@ import numpy as np
 import heartpy as hp
 from collections import deque
 import scipy.signal as sp
-from scipy.signal import find_peaks
 import pandas as pd
 from matplotlib import pyplot as plt
 import serial
+import peaks as p
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import filters as ft
 from globals import bpm_label, raw_data_buffer, timestamps, ser, arduino_port, baud_rate, sampling_rate, fs, amplitude_threshold, window_duration
 import mplcursors
 from matplotlib.widgets import RectangleSelector
+
 
 #Recording List
 recorded_data = []
@@ -75,6 +76,8 @@ stop_button = QtWidgets.QPushButton("Stop Recording")
 save_button = QtWidgets.QPushButton("Save to CSV File")
 view_button = QtWidgets.QPushButton("View Saved Files")
 clear_buffer = QtWidgets.QPushButton("Clear Buffer")
+
+#Addition of the buttons to the GUI
 button_layout.addWidget(start_button)
 button_layout.addWidget(stop_button)
 button_layout.addWidget(save_button)
@@ -88,13 +91,15 @@ output_csv_file = 'filtered_data.csv'
 
 
 '''
-Program Functions
-
-<Coded By Leon Mutembedza>
-
+                                                                         ______________________________________________________
+                                                                        |                                                      |
+                                                                        |                Program Functions                     |
+                                                                        |                                                      |
+                                                                        |      Coded By Leon Mutembedza and Julia Adamus       |
+                                                                        |______________________________________________________|
 '''
 def open_file_viewer():
-    global file_window_ref  # Persistent reference to prevent garbage collection
+    global file_window_ref  
 
     # Create the file viewer window
     file_window = QtWidgets.QMainWindow()
@@ -270,7 +275,7 @@ def update():
 
     try:
         data = ser.readline().decode('utf-8').strip()
-
+        
         if data:
     
             ppg_value = int(data)
@@ -284,7 +289,7 @@ def update():
             filtered_data = ft.median_filter(filtered_data, kernel_size=3)
 
             record_data_to_text_file(current_time, ppg_value)
-            record_data_to_text(current_time, filtered_data)
+            record_data_to_text(current_time, ppg_value)
 
             # Update data_df
             new_data = pd.DataFrame({'Timestamp': [current_time], 'PPG': [filtered_data[-1]]})
@@ -294,13 +299,13 @@ def update():
             raw_curve.setData(np.array(timestamps), np.array(filtered_data))
 
             # Detect peaks and plot them
-            peaks, _ = find_peaks(filtered_data, height=amplitude_threshold)
+            peaks, _ = sp.find_peaks(filtered_data)
             peaks_timestamps = np.array(timestamps)[peaks]
             peaks_values = np.array(filtered_data)[peaks]
             peaks_scatter_item.setData(peaks_timestamps, peaks_values)
 
             # Calculate BPM using HeartPy
-            bpm = calculate_bpm_with_heartpy(filtered_data, sampling_rate)
+            bpm = calculate_bpm_with_heartpy(filtered_data, sampling_rate, window_duration=10)
             bpm_label.setText(f"BPM: {bpm:.2f}")
 
     except ValueError:
